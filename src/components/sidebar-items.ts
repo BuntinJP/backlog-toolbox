@@ -7,13 +7,11 @@ import type { SidebarItem } from "@/types/feature";
  * 表示順序はこの配列の順序に従う。
  */
 export const sidebarItems: SidebarItem[] = [
-  // 新機能追加時にここへ追加
-  // 例:
-  // {
-  //   id: "backlog-tickets",
-  //   label: "Backlog チケット一括作成",
-  //   description: "複数のチケットをまとめて作成",
-  //   icon: "🎫",
-  //   href: "/features/backlog-tickets",
-  // },
+  {
+    id: "template-replacer",
+    label: "テンプレート変数置換",
+    description: "テンプレートの変数を複数値の直積で一括置換",
+    icon: "🔄",
+    href: "/features/template-replacer",
+  },
 ];

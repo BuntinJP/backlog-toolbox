@@ -21,9 +21,11 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className={inter.variable}>
-        <div className="app-layout">
+        <div className="flex min-h-screen">
           <Sidebar />
-          <div className="main-area">{children}</div>
+          <div className="ml-[var(--sidebar-width)] flex-1 flex flex-col min-h-screen">
+            {children}
+          </div>
         </div>
       </body>
     </html>

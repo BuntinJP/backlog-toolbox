@@ -11,6 +11,7 @@ AI Agent がこのガイドに従って実装を行います。
 - Bun をランタイム・パッケージマネージャーとして使用
 - TypeScript strict mode
 - zod によるバリデーション
+- **Tailwind CSS v4** によるスタイリング（CSS Module は使用しない）
 
 ---
 
@@ -46,7 +47,7 @@ export const sidebarItems: SidebarItem[] = [
 
 ```typescript
 // src/lib/my-feature.ts
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 // 入力スキーマ
 const InputSchema = z.object({
@@ -84,7 +85,7 @@ export async function executeMyFeature(rawInput: unknown): Promise<Result> {
 
 ```typescript
 // src/lib/env.ts
-import { z } from 'zod';
+import { z } from 'zod/v4';
 
 const envSchema = z.object({
   MY_API_KEY: z.string().min(1),
@@ -136,6 +137,7 @@ export async function runFeature(_prevState: ActionState, formData: FormData): P
 ### 4.1 page.tsx を作成
 
 `src/app/features/my-feature/page.tsx` にメインセクションのUIを実装する。
+スタイリングには **Tailwind CSS のユーティリティクラス** を使用する。
 
 ```tsx
 // src/app/features/my-feature/page.tsx
@@ -158,27 +160,50 @@ export default function MyFeaturePage() {
         </button>
       </Navbar>
 
-      <main className='main-content'>
-        <form action={formAction}>
-          {/* パラメータ入力フォーム */}
-          <label>
-            名前
-            <input type='text' name='name' required />
-          </label>
-          <label>
-            件数
-            <input type='number' name='count' defaultValue={1} required />
-          </label>
-          <button type='submit' className='btn btn-primary' disabled={isPending}>
-            {isPending ? '処理中...' : '実行'}
-          </button>
+      <main className='flex-1 p-6'>
+        <form action={formAction} className='max-w-4xl mx-auto space-y-6'>
+          <section className='bg-card-bg rounded-xl border border-border p-6'>
+            <label className='block'>
+              <span className='text-sm font-medium text-foreground'>名前</span>
+              <input
+                type='text'
+                name='name'
+                required
+                className='mt-1 w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent transition-colors'
+              />
+            </label>
+            <label className='block mt-4'>
+              <span className='text-sm font-medium text-foreground'>件数</span>
+              <input
+                type='number'
+                name='count'
+                defaultValue={1}
+                required
+                className='mt-1 w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent transition-colors'
+              />
+            </label>
+          </section>
+
+          <div className='flex justify-end'>
+            <button type='submit' className='btn btn-primary' disabled={isPending}>
+              {isPending ? '処理中...' : '実行'}
+            </button>
+          </div>
         </form>
 
-        {state && <div>{state.success ? `✅ ${state.message}` : `❌ ${state.message}`}</div>}
+        {state && (
+          <div className='max-w-4xl mx-auto mt-6'>
+            <div className={`rounded-xl border p-6 ${
+              state.success ? 'bg-card-bg border-border' : 'bg-danger/5 border-danger/30'
+            }`}>
+              {state.success ? `✅ ${state.message}` : `❌ ${state.message}`}
+            </div>
+          </div>
+        )}
       </main>
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title='実行確認'>
-        <p>処理を実行しますか？</p>
+        <p className='text-sm text-muted mb-4'>処理を実行しますか？</p>
         <button className='btn btn-primary' onClick={() => setModalOpen(false)}>
           OK
         </button>
@@ -187,6 +212,14 @@ export default function MyFeaturePage() {
   );
 }
 ```
+
+### 4.2 スタイリングルール
+
+- **CSS Module は使用禁止** — Tailwind CSS のユーティリティクラスを使用
+- カスタム色は `globals.css` の `@theme` で定義済み（例: `text-foreground`, `bg-card-bg`, `border-border`）
+- ボタンは `btn btn-primary` / `btn btn-secondary` / `btn btn-danger` を使用
+- カードセクションは `bg-card-bg rounded-xl border border-border p-6` パターン
+- フォーム入力は `bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent transition-colors` パターン
 
 ---
 
@@ -241,7 +274,7 @@ bun run dev
 実装完了時に以下を確認:
 
 - [ ] `src/lib/[feature-name].ts` — サーバーサイドロジック
-- [ ] `src/app/features/[feature-name]/page.tsx` — UI
+- [ ] `src/app/features/[feature-name]/page.tsx` — UI（Tailwind CSS）
 - [ ] `src/app/features/[feature-name]/actions.ts` — Server Actions
 - [ ] `src/components/sidebar-items.ts` にエントリ追加
 - [ ] `bunx tsc --noEmit` パス
@@ -256,7 +289,7 @@ bun run dev
 新機能追加時に作成/編集するファイル:
 
 [作成] src/lib/my-feature.ts              ← サーバーサイドロジック
-[作成] src/app/features/my-feature/page.tsx ← UIページ
+[作成] src/app/features/my-feature/page.tsx ← UIページ（Tailwind CSS）
 [作成] src/app/features/my-feature/actions.ts ← Server Actions
 [編集] src/components/sidebar-items.ts     ← サイドバー登録
 [作成] docs/features/my-feature.md         ← ドキュメント
@@ -265,3 +298,10 @@ bun run dev
 ## 参照すべき型定義
 
 - `src/types/feature.ts` — `SidebarItem`, `NavAction`, `FeatureParam` 等
+
+## リファレンス実装
+
+実際の実装例として以下を参照:
+
+- `src/lib/template-replacer.ts` — サーバーサイドロジックの参考
+- `src/app/features/template-replacer/` — UI / Server Actions の参考
