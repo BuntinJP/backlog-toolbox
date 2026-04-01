@@ -18,10 +18,13 @@ const InputSchema = z.object({
   template: z.string().min(1, "テンプレートは必須です"),
   /** 置換対象の変数リスト */
   variables: z.array(VariableSchema).min(1, "少なくとも1つの変数が必要です"),
+  /** 置換モード */
+  mode: z.enum(["aligned", "cartesian"]).default("aligned"),
 });
 
 export type TemplateReplacerInput = z.infer<typeof InputSchema>;
 export type Variable = z.infer<typeof VariableSchema>;
+export type TemplateReplacementMode = TemplateReplacerInput["mode"];
 
 /** 結果の型 */
 export type TemplateReplacerResult = {
@@ -29,7 +32,7 @@ export type TemplateReplacerResult = {
   message: string;
   /** 生成された全置換結果 */
   results: string[];
-  /** 組み合わせ数 */
+  /** 生成結果数 */
   totalCombinations: number;
 };
 
@@ -53,6 +56,18 @@ function cartesianProduct<T>(arrays: T[][]): T[][] {
   );
 }
 
+function replaceTemplate(
+  template: string,
+  variables: Variable[],
+  values: string[]
+): string {
+  return variables.reduce(
+    (result, variable, index) =>
+      result.replaceAll(`{{${variable.name}}}`, values[index]),
+    template
+  );
+}
+
 // ============================================
 // メイン処理
 // ============================================
@@ -61,13 +76,13 @@ function cartesianProduct<T>(arrays: T[][]): T[][] {
  * テンプレート変数置換を実行する
  *
  * テンプレート内の {{変数名}} を各変数の値で置換し、
- * 全変数の値の直積（デカルト積）で組み合わせた結果を返す。
+ * 行対応または直積のいずれかのモードで結果を返す。
  */
 export async function executeTemplateReplacer(
   rawInput: unknown
 ): Promise<TemplateReplacerResult> {
   const input = InputSchema.parse(rawInput);
-  const { template, variables } = input;
+  const { template, variables, mode } = input;
 
   // テンプレート内の変数を検証
   for (const v of variables) {
@@ -82,22 +97,48 @@ export async function executeTemplateReplacer(
     }
   }
 
-  // 各変数の値の直積を計算
-  const valueArrays = variables.map((v) => v.values);
-  const combinations = cartesianProduct(valueArrays);
+  const valueCounts = variables.map((variable) => variable.values.length);
+  let results: string[];
 
-  // 各組み合わせでテンプレートを置換
-  const results = combinations.map((combo) => {
-    let result = template;
-    variables.forEach((v, i) => {
-      result = result.replaceAll(`{{${v.name}}}`, combo[i]);
-    });
-    return result;
-  });
+  if (mode === "aligned") {
+    const expectedCount = valueCounts[0];
+    const hasMismatchedCounts = valueCounts.some((count) => count !== expectedCount);
+
+    if (hasMismatchedCounts) {
+      const details = variables
+        .map((variable) => `${variable.name}: ${variable.values.length}件`)
+        .join(", ");
+
+      return {
+        success: false,
+        message: `行対応モードでは全ての変数の値の数を揃えてください (${details})`,
+        results: [],
+        totalCombinations: 0,
+      };
+    }
+
+    results = Array.from({ length: expectedCount }, (_, rowIndex) =>
+      replaceTemplate(
+        template,
+        variables,
+        variables.map((variable) => variable.values[rowIndex])
+      )
+    );
+  } else {
+    const valueArrays = variables.map((variable) => variable.values);
+    const combinations = cartesianProduct(valueArrays);
+
+    results = combinations.map((combo) =>
+      replaceTemplate(template, variables, combo)
+    );
+  }
 
   return {
     success: true,
-    message: `${results.length} 件の組み合わせを生成しました`,
+    message:
+      mode === "aligned"
+        ? `${results.length} 件の結果を行対応で生成しました`
+        : `${results.length} 件の組み合わせを直積で生成しました`,
     results,
     totalCombinations: results.length,
   };

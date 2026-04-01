@@ -4,6 +4,8 @@ import { useActionState, useState, useCallback } from "react";
 import { Navbar } from "@/components/Navbar";
 import { runTemplateReplacer, type ActionState } from "./actions";
 
+type ReplacementMode = "aligned" | "cartesian";
+
 type Variable = {
   id: string;
   name: string;
@@ -25,6 +27,7 @@ export default function TemplateReplacerPage() {
   );
   const [template, setTemplate] = useState("");
   const [variables, setVariables] = useState<Variable[]>([createVariable()]);
+  const [mode, setMode] = useState<ReplacementMode>("aligned");
   const [copied, setCopied] = useState(false);
   const [sorted, setSorted] = useState(false);
 
@@ -61,10 +64,11 @@ export default function TemplateReplacerPage() {
             .filter((s) => s !== ""),
         }));
       formData.set("variables", JSON.stringify(vars));
+      formData.set("mode", mode);
 
       formAction(formData);
     },
-    [template, variables, formAction]
+    [template, variables, mode, formAction]
   );
 
   const handleCopyResults = useCallback(async () => {
@@ -84,15 +88,23 @@ export default function TemplateReplacerPage() {
     displayResults.sort((a, b) => a.text.localeCompare(b.text));
   }
 
-  // 組み合わせ数のプレビュー計算
-  const previewCount = variables
+  const configuredVariables = variables
     .filter((v) => v.name.trim() !== "" && v.valuesText.trim() !== "")
-    .reduce((acc, v) => {
-      const count = v.valuesText
-        .split("\n")
-        .filter((s) => s.trim() !== "").length;
-      return acc * Math.max(count, 1);
-    }, 1);
+    .map((v) => v.valuesText.split("\n").filter((s) => s.trim() !== "").length);
+  const valueCounts = configuredVariables;
+  const hasCountMismatch =
+    mode === "aligned" &&
+    valueCounts.length > 1 &&
+    valueCounts.some((count) => count !== valueCounts[0]);
+  const previewCount =
+    valueCounts.length === 0
+      ? 0
+      : mode === "aligned"
+        ? hasCountMismatch
+          ? 0
+          : valueCounts[0]
+        : valueCounts.reduce((acc, count) => acc * Math.max(count, 1), 1);
+  const modeLabel = mode === "aligned" ? "行対応" : "直積";
 
   return (
     <>
@@ -117,6 +129,48 @@ export default function TemplateReplacerPage() {
             />
           </section>
 
+          <section className="bg-card-bg rounded-xl border border-border p-6">
+            <h2 className="text-sm font-semibold text-foreground mb-1">
+              置換方法
+            </h2>
+            <p className="text-xs text-muted">
+              標準は各変数の同じ行番号を対応させて置換します。必要な場合のみ、全組み合わせを作る直積生成に切り替えてください。
+            </p>
+
+            <div className="mt-4 inline-flex rounded-lg border border-border bg-background p-1">
+              <button
+                type="button"
+                onClick={() => setMode("aligned")}
+                className={`rounded-md px-4 py-2 text-sm transition-colors ${
+                  mode === "aligned"
+                    ? "bg-accent text-background"
+                    : "text-muted hover:text-foreground"
+                }`}
+                aria-pressed={mode === "aligned"}
+              >
+                行対応
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("cartesian")}
+                className={`rounded-md px-4 py-2 text-sm transition-colors ${
+                  mode === "cartesian"
+                    ? "bg-accent text-background"
+                    : "text-muted hover:text-foreground"
+                }`}
+                aria-pressed={mode === "cartesian"}
+              >
+                直積
+              </button>
+            </div>
+
+            <p className="text-xs text-muted mt-3">
+              {mode === "aligned"
+                ? "1行目同士、2行目同士のように対応づけて置換します。複数変数を使う場合は値の数を揃えてください。"
+                : "各変数の全値の組み合わせを生成します。値が増えるほど出力件数も急激に増えます。"}
+            </p>
+          </section>
+
           {/* 変数入力 */}
           <section className="bg-card-bg rounded-xl border border-border p-6">
             <div className="flex items-center justify-between mb-4">
@@ -125,7 +179,7 @@ export default function TemplateReplacerPage() {
                   置換変数
                 </h2>
                 <p className="text-xs text-muted mt-0.5">
-                  各変数の値を改行区切りで入力（値の数の直積 = 出力数）
+                  各変数の値を改行区切りで入力してください
                 </p>
               </div>
               <button
@@ -194,15 +248,28 @@ export default function TemplateReplacerPage() {
                 </div>
               ))}
             </div>
+
+            {hasCountMismatch && (
+              <p className="text-xs text-danger mt-4">
+                行対応モードでは、各変数の値を同じ数だけ入力してください。
+              </p>
+            )}
           </section>
 
           {/* 実行ボタン */}
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted">
-              予想出力数:{" "}
-              <span className="font-bold text-foreground">{previewCount}</span>{" "}
-              件
-            </p>
+            <div>
+              <p className="text-sm text-muted">
+                予想出力数 ({modeLabel}):{" "}
+                <span className="font-bold text-foreground">{previewCount}</span>{" "}
+                件
+              </p>
+              {mode === "cartesian" && previewCount > 0 && (
+                <p className="text-xs text-muted mt-1">
+                  値数の掛け合わせで件数を計算しています。
+                </p>
+              )}
+            </div>
             <button
               type="submit"
               className="btn btn-primary"

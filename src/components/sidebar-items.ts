@@ -10,7 +10,7 @@ export const sidebarItems: SidebarItem[] = [
   {
     id: "template-replacer",
     label: "テンプレート変数置換",
-    description: "テンプレートの変数を複数値の直積で一括置換",
+    description: "行対応または直積でテンプレート変数を一括置換",
     icon: "🔄",
     href: "/features/template-replacer",
   },

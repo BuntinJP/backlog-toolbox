@@ -12,17 +12,21 @@ export async function runTemplateReplacer(
   formData: FormData
 ): Promise<ActionState> {
   try {
-    const template = formData.get("template") as string;
-    const variablesJson = formData.get("variables") as string;
+    const templateEntry = formData.get("template");
+    const variablesEntry = formData.get("variables");
+    const modeEntry = formData.get("mode");
 
-    const variables = JSON.parse(variablesJson) as {
-      name: string;
-      values: string[];
-    }[];
+    if (typeof templateEntry !== "string" || typeof variablesEntry !== "string") {
+      throw new Error("入力データが不正です");
+    }
+
+    const variables: unknown = JSON.parse(variablesEntry);
+    const mode = typeof modeEntry === "string" ? modeEntry : undefined;
 
     const result = await executeTemplateReplacer({
-      template,
+      template: templateEntry,
       variables,
+      mode,
     });
 
     return result;
