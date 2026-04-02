@@ -1,3 +1,5 @@
+import type { LucideIcon } from "lucide-react";
+
 /**
  * Backlog Toolbox — 機能定義の共通型
  *
@@ -13,8 +15,8 @@ export type SidebarItem = {
   label: string;
   /** 機能の短い説明 */
   description: string;
-  /** アイコン（絵文字 or テキスト） */
-  icon: string;
+  /** アイコン */
+  icon: LucideIcon;
   /** ルーティングパス（`/features/xxx`） */
   href: string;
 };
@@ -23,8 +25,8 @@ export type SidebarItem = {
 export type NavAction = {
   /** ボタンに表示するラベル */
   label: string;
-  /** アイコン（絵文字 or テキスト） */
-  icon?: string;
+  /** アイコン */
+  icon?: LucideIcon;
   /** ボタンの種別 */
   variant: "primary" | "secondary" | "danger";
 };

@@ -1,3 +1,4 @@
+import { ArrowLeftRight } from "lucide-react";
 import type { SidebarItem } from "@/types/feature";
 
 /**
@@ -11,7 +12,7 @@ export const sidebarItems: SidebarItem[] = [
     id: "template-replacer",
     label: "テンプレート変数置換",
     description: "行対応または直積でテンプレート変数を一括置換",
-    icon: "🔄",
+    icon: ArrowLeftRight,
     href: "/features/template-replacer",
   },
 ];

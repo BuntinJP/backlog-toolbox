@@ -1,5 +1,6 @@
 "use client";
 
+import { House, Wrench } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { sidebarItems } from "./sidebar-items";
@@ -10,7 +11,7 @@ export function Sidebar() {
   return (
     <aside className="w-[var(--sidebar-width)] h-screen fixed top-0 left-0 flex flex-col bg-sidebar-bg border-r border-border z-100">
       <div className="flex items-center gap-2.5 px-5 py-5 border-b border-border">
-        <span className="text-2xl">🧰</span>
+        <Wrench className="size-6 text-primary" />
         <span className="text-base font-bold text-foreground tracking-tight">
           Backlog Toolbox
         </span>
@@ -21,11 +22,11 @@ export function Sidebar() {
           href="/"
           className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer ${
             pathname === "/"
-              ? "bg-active-bg text-accent"
-              : "text-muted hover:bg-hover-bg hover:text-foreground"
+              ? "bg-active-bg text-primary"
+              : "text-muted-foreground hover:bg-hover-bg hover:text-foreground"
           }`}
         >
-          <span className="text-lg shrink-0">🏠</span>
+          <House className="size-5 shrink-0" />
           <span className="whitespace-nowrap overflow-hidden text-ellipsis">
             ダッシュボード
           </span>
@@ -41,12 +42,12 @@ export function Sidebar() {
             href={item.href}
             className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer ${
               pathname === item.href
-                ? "bg-active-bg text-accent"
-                : "text-muted hover:bg-hover-bg hover:text-foreground"
+                ? "bg-active-bg text-primary"
+                : "text-muted-foreground hover:bg-hover-bg hover:text-foreground"
             }`}
             title={item.description}
           >
-            <span className="text-lg shrink-0">{item.icon}</span>
+            <item.icon className="size-5 shrink-0" />
             <span className="whitespace-nowrap overflow-hidden text-ellipsis">
               {item.label}
             </span>
@@ -55,7 +56,7 @@ export function Sidebar() {
       </nav>
 
       <div className="px-5 py-4 border-t border-border">
-        <span className="text-xs text-muted">v0.1.0</span>
+        <span className="text-xs text-muted-foreground">v0.1.0</span>
       </div>
     </aside>
   );

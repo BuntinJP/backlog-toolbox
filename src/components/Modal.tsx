@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
 
 type ModalProps = {
@@ -37,11 +38,11 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-border">
           <h2 className="text-base font-semibold text-foreground">{title}</h2>
           <button
-            className="flex items-center justify-center w-7 h-7 border-none rounded-md bg-transparent text-muted text-sm cursor-pointer transition-all duration-150 hover:bg-hover-bg hover:text-foreground"
+            className="flex items-center justify-center w-7 h-7 border-none rounded-md bg-transparent text-muted-foreground text-sm cursor-pointer transition-all duration-150 hover:bg-hover-bg hover:text-foreground"
             onClick={onClose}
             aria-label="閉じる"
           >
-            ✕
+            <X className="size-4" />
           </button>
         </div>
         <div className="px-6 pt-5 pb-6">{children}</div>
