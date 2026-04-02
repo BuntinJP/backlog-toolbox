@@ -9,6 +9,10 @@ labels: feature
 
 <!-- 機能の短い名前（英語、kebab-case） 例: backlog-tickets -->
 
+## ルーティング
+
+<!-- 例: /features/backlog-tickets -->
+
 ## 概要
 
 <!-- この機能が何をするか、1-2文で説明 -->
@@ -39,6 +43,14 @@ labels: feature
 
 ## UI要件
 
+### 使用するアイコン
+
+<!-- lucide-react のアイコン名を記載 -->
+
+### 使用する共通UI
+
+<!-- Card / Button / Tabs / Alert など、shadcn/ui を前提に記載 -->
+
 ### メインセクション
 
 <!-- メインセクションに表示する内容の説明 -->
@@ -57,5 +69,12 @@ labels: feature
 - [ ] `src/app/features/[feature-name]/page.tsx` — UI
 - [ ] `src/app/features/[feature-name]/actions.ts` — Server Actions
 - [ ] `src/components/sidebar-items.ts` にエントリ追加
+- [ ] `lucide-react` のアイコンを選定
+- [ ] `shadcn/ui` ベースで UI を構成
 - [ ] `bunx tsc --noEmit` パス
+- [ ] 必要なら `bun run build` パス
 - [ ] `docs/features/[feature-name].md` 作成
+
+## バージョン・リリース影響
+
+<!-- package.json の version 更新が必要か、リリースノート対象かを記載 -->

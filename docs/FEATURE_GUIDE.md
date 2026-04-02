@@ -1,76 +1,72 @@
 # 新機能追加ガイド（AI Agent向け）
 
-このガイドは、Backlog Toolbox に新しい機能を追加するための手順書です。
-AI Agent がこのガイドに従って実装を行います。
+このガイドは、Backlog Toolbox に新しい機能を追加するときの標準フローです。
+実装前に `AGENTS.md` と `docs/TOOL_FRAMEWORK.md` を確認し、このガイドは具体的な実装手順として使ってください。
 
 ---
 
 ## 前提条件
 
-- `AGENTS.md` の規約を必ず確認すること
-- Bun をランタイム・パッケージマネージャーとして使用
-- TypeScript strict mode
-- zod によるバリデーション
-- **Tailwind CSS v4** によるスタイリング（CSS Module は使用しない）
+- Bun をランタイム・パッケージマネージャーとして使う
+- TypeScript strict mode を維持する
+- zod で入力を検証する
+- UI は Tailwind CSS v4 + `shadcn/ui` を基本に組み立てる
+- アイコンは `lucide-react` に統一する
+- 通知は `sonner` を使う
+- 既存のアプリシェルは `Sidebar` + `Navbar` + `SidebarTrigger` を前提にする
 
 ---
 
-## Step 1: 機能の定義
+## Step 1: 機能メタデータを定義する
 
 ### 1.1 サイドバーにエントリを追加
 
-`src/components/sidebar-items.ts` に `SidebarItem` を追加する。
+`src/components/sidebar-items.ts` に `SidebarItem` を追加します。
 
-```typescript
-// src/components/sidebar-items.ts
-import type { SidebarItem } from '@/types/feature';
+```ts
+import { Ticket } from "lucide-react";
+import type { SidebarItem } from "@/types/feature";
 
 export const sidebarItems: SidebarItem[] = [
   {
-    id: 'my-feature', // kebab-case の一意ID
-    label: '機能名', // サイドバーに表示する名前
-    description: 'この機能の説明', // ツールチップ
-    icon: '🎫', // 絵文字アイコン
-    href: '/features/my-feature', // ルーティングパス
+    id: "my-feature",
+    label: "機能名",
+    description: "この機能の説明",
+    icon: Ticket,
+    href: "/features/my-feature",
   },
 ];
 ```
 
+### 1.2 ルーティングを決める
+
+- フォルダ名は `kebab-case`
+- URL は `/features/[feature-name]`
+- `id`, フォルダ名, `href` は原則そろえる
+
 ---
 
-## Step 2: サーバーサイドロジックの実装
+## Step 2: サーバーサイドロジックを実装する
 
-### 2.1 ロジックファイルを作成
+`src/lib/my-feature.ts` に UI 非依存の処理を集約します。
 
-`src/lib/my-feature.ts` に **サーバーサイドロジック** を実装する。
-外部APIの呼び出し、データ加工など、サーバーサイドで行う処理をすべてこのファイルに集約する。
+```ts
+import { z } from "zod";
 
-```typescript
-// src/lib/my-feature.ts
-import { z } from 'zod/v4';
-
-// 入力スキーマ
-const InputSchema = z.object({
-  name: z.string().min(1),
+const MyFeatureInputSchema = z.object({
+  name: z.string().min(1, "名前は必須です"),
   count: z.number().int().positive(),
 });
 
-type Input = z.infer<typeof InputSchema>;
+export type MyFeatureInput = z.infer<typeof MyFeatureInputSchema>;
 
-// 結果の型
-type Result = {
+export type MyFeatureResult = {
   success: boolean;
   message: string;
 };
 
-/**
- * 機能のメイン処理
- */
-export async function executeMyFeature(rawInput: unknown): Promise<Result> {
-  const input = InputSchema.parse(rawInput);
-
-  // ここにロジックを実装
-  // 例: 外部APIの呼び出し
+export async function executeMyFeature(rawInput: unknown): Promise<MyFeatureResult> {
+  const input = MyFeatureInputSchema.parse(rawInput);
 
   return {
     success: true,
@@ -79,13 +75,143 @@ export async function executeMyFeature(rawInput: unknown): Promise<Result> {
 }
 ```
 
-### 2.2 環境変数が必要な場合
+### 実装ルール
 
-`src/lib/env.ts` にスキーマを追加し、`.env.local` に環境変数を定義する。
+- 入力はまず zod で検証する
+- 正規化処理は UI ではなくロジック層へ寄せる
+- 返却値は UI が扱いやすい構造にする
+- 外部 API 呼び出しや重い変換はここに集約する
 
-```typescript
-// src/lib/env.ts
-import { z } from 'zod/v4';
+---
+
+## Step 3: Server Actions を実装する
+
+`src/app/features/my-feature/actions.ts` では、`FormData` などの UI 入力をサーバーロジックへ橋渡しします。
+
+```ts
+"use server";
+
+import { executeMyFeature } from "@/lib/my-feature";
+
+export type ActionState =
+  | {
+      success: boolean;
+      message: string;
+    }
+  | null;
+
+export async function runFeature(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const input = {
+      name: String(formData.get("name") ?? ""),
+      count: Number(formData.get("count") ?? 0),
+    };
+
+    return await executeMyFeature(input);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "不明なエラーが発生しました";
+
+    return {
+      success: false,
+      message,
+    };
+  }
+}
+```
+
+### 実装ルール
+
+- `actions.ts` は薄く保つ
+- フォーム整形とエラーメッセージ変換に集中する
+- ビジネスロジックを `actions.ts` に書き込まない
+
+---
+
+## Step 4: UI を構築する
+
+`src/app/features/my-feature/page.tsx` は `shadcn/ui` を優先して構築します。
+
+```tsx
+"use client";
+
+import { useActionState } from "react";
+import { Play } from "lucide-react";
+import { Navbar } from "@/components/Navbar";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { runFeature, type ActionState } from "./actions";
+
+export default function MyFeaturePage() {
+  const [state, formAction, isPending] = useActionState<ActionState, FormData>(
+    runFeature,
+    null,
+  );
+
+  return (
+    <>
+      <Navbar title="機能名">
+        <Button type="submit" form="my-feature-form" disabled={isPending}>
+          <Play />
+          {isPending ? "処理中..." : "実行"}
+        </Button>
+      </Navbar>
+
+      <main className="flex-1 p-6">
+        <form
+          id="my-feature-form"
+          action={formAction}
+          className="mx-auto flex max-w-4xl flex-col gap-6"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle>入力</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">名前</Label>
+                <Input id="name" name="name" required />
+              </div>
+            </CardContent>
+          </Card>
+        </form>
+
+        {state && (
+          <div className="mx-auto mt-6 max-w-4xl">
+            <Alert variant={state.success ? "default" : "destructive"}>
+              <AlertTitle>{state.success ? "完了" : "エラー"}</AlertTitle>
+              <AlertDescription>{state.message}</AlertDescription>
+            </Alert>
+          </div>
+        )}
+      </main>
+    </>
+  );
+}
+```
+
+### UI 実装ルール
+
+- まず `src/components/ui/` に既存コンポーネントがあるか確認する
+- 新規 UI も `shadcn/ui` の構成に揃える
+- 一時通知は `toast.success` / `toast.error` を使う
+- アイコンは `lucide-react` のみ使う
+- モバイル幅とサイドバーの開閉状態を考慮する
+
+---
+
+## Step 5: 環境変数が必要な場合
+
+`src/lib/env.ts` にスキーマを追加し、`.env.local` と機能ドキュメントへ反映します。
+
+```ts
+import { z } from "zod";
 
 const envSchema = z.object({
   MY_API_KEY: z.string().min(1),
@@ -94,214 +220,64 @@ const envSchema = z.object({
 export const env = envSchema.parse(process.env);
 ```
 
----
+更新対象:
 
-## Step 3: Server Actions の実装
-
-### 3.1 actions.ts を作成
-
-`src/app/features/my-feature/actions.ts` に Server Actions を実装する。
-ここからサーバーサイドロジックを `import` して呼び出す。
-
-```typescript
-// src/app/features/my-feature/actions.ts
-'use server';
-
-import { executeMyFeature } from '@/lib/my-feature';
-
-export type ActionState = {
-  success: boolean;
-  message: string;
-} | null;
-
-export async function runFeature(_prevState: ActionState, formData: FormData): Promise<ActionState> {
-  try {
-    const input = {
-      name: formData.get('name'),
-      count: Number(formData.get('count')),
-    };
-
-    const result = await executeMyFeature(input);
-    return result;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : '不明なエラー';
-    return { success: false, message };
-  }
-}
-```
+- `.env.local`
+- `src/lib/env.ts`
+- `docs/features/my-feature.md`
 
 ---
 
-## Step 4: UIページの実装
+## Step 6: ドキュメントを更新する
 
-### 4.1 page.tsx を作成
+最低限、以下を更新します。
 
-`src/app/features/my-feature/page.tsx` にメインセクションのUIを実装する。
-スタイリングには **Tailwind CSS のユーティリティクラス** を使用する。
+- `docs/features/my-feature.md`
+- `src/components/sidebar-items.ts`
+- 必要なら `AGENTS.md`
+- 実装ルールに影響があるなら `docs/TOOL_FRAMEWORK.md`
 
-```tsx
-// src/app/features/my-feature/page.tsx
-'use client';
+`docs/features/my-feature.md` には次を含めてください。
 
-import { useActionState, useState } from 'react';
-import { Navbar } from '@/components/Navbar';
-import { Modal } from '@/components/Modal';
-import { runFeature, type ActionState } from './actions';
-
-export default function MyFeaturePage() {
-  const [state, formAction, isPending] = useActionState<ActionState, FormData>(runFeature, null);
-  const [modalOpen, setModalOpen] = useState(false);
-
-  return (
-    <>
-      <Navbar title='機能名'>
-        <button className='btn btn-primary' onClick={() => setModalOpen(true)} disabled={isPending}>
-          ▶ 実行
-        </button>
-      </Navbar>
-
-      <main className='flex-1 p-6'>
-        <form action={formAction} className='max-w-4xl mx-auto space-y-6'>
-          <section className='bg-card-bg rounded-xl border border-border p-6'>
-            <label className='block'>
-              <span className='text-sm font-medium text-foreground'>名前</span>
-              <input
-                type='text'
-                name='name'
-                required
-                className='mt-1 w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent transition-colors'
-              />
-            </label>
-            <label className='block mt-4'>
-              <span className='text-sm font-medium text-foreground'>件数</span>
-              <input
-                type='number'
-                name='count'
-                defaultValue={1}
-                required
-                className='mt-1 w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent transition-colors'
-              />
-            </label>
-          </section>
-
-          <div className='flex justify-end'>
-            <button type='submit' className='btn btn-primary' disabled={isPending}>
-              {isPending ? '処理中...' : '実行'}
-            </button>
-          </div>
-        </form>
-
-        {state && (
-          <div className='max-w-4xl mx-auto mt-6'>
-            <div className={`rounded-xl border p-6 ${
-              state.success ? 'bg-card-bg border-border' : 'bg-danger/5 border-danger/30'
-            }`}>
-              {state.success ? `✅ ${state.message}` : `❌ ${state.message}`}
-            </div>
-          </div>
-        )}
-      </main>
-
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title='実行確認'>
-        <p className='text-sm text-muted mb-4'>処理を実行しますか？</p>
-        <button className='btn btn-primary' onClick={() => setModalOpen(false)}>
-          OK
-        </button>
-      </Modal>
-    </>
-  );
-}
-```
-
-### 4.2 スタイリングルール
-
-- **CSS Module は使用禁止** — Tailwind CSS のユーティリティクラスを使用
-- カスタム色は `globals.css` の `@theme` で定義済み（例: `text-foreground`, `bg-card-bg`, `border-border`）
-- ボタンは `btn btn-primary` / `btn btn-secondary` / `btn btn-danger` を使用
-- カードセクションは `bg-card-bg rounded-xl border border-border p-6` パターン
-- フォーム入力は `bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent transition-colors` パターン
+- 機能概要
+- 主な入力と出力
+- 使用 API / 外部サービス
+- 環境変数
+- 既知の制限事項
 
 ---
 
-## Step 5: 型チェックと動作確認
+## Step 7: 確認する
 
-### 5.1 型チェック
+型チェック:
 
 ```bash
 bunx tsc --noEmit
 ```
 
-### 5.2 開発サーバーで確認
+ビルド確認:
+
+```bash
+bun run build
+```
+
+必要に応じて開発サーバー:
 
 ```bash
 bun run dev
 ```
 
-ブラウザで `http://localhost:3000/features/my-feature` を開いて動作確認。
-
 ---
 
-## Step 6: ドキュメントの作成
+## 追加時のチェックリスト
 
-`docs/features/my-feature.md` に以下を記録する:
-
-```markdown
-# 機能名
-
-## 概要
-
-この機能は...
-
-## 使用API / 外部サービス
-
-- API名: 用途
-
-## 環境変数
-
-| 変数名     | 用途      |
-| ---------- | --------- |
-| MY_API_KEY | APIの認証 |
-
-## 既知の制限事項
-
-- ...
-```
-
----
-
-## チェックリスト
-
-実装完了時に以下を確認:
-
-- [ ] `src/lib/[feature-name].ts` — サーバーサイドロジック
-- [ ] `src/app/features/[feature-name]/page.tsx` — UI（Tailwind CSS）
-- [ ] `src/app/features/[feature-name]/actions.ts` — Server Actions
-- [ ] `src/components/sidebar-items.ts` にエントリ追加
-- [ ] `bunx tsc --noEmit` パス
-- [ ] `bun run dev` で動作確認
-- [ ] `docs/features/[feature-name].md` 作成
-
----
-
-## ファイル構成まとめ
-
-```
-新機能追加時に作成/編集するファイル:
-
-[作成] src/lib/my-feature.ts              ← サーバーサイドロジック
-[作成] src/app/features/my-feature/page.tsx ← UIページ（Tailwind CSS）
-[作成] src/app/features/my-feature/actions.ts ← Server Actions
-[編集] src/components/sidebar-items.ts     ← サイドバー登録
-[作成] docs/features/my-feature.md         ← ドキュメント
-```
-
-## 参照すべき型定義
-
-- `src/types/feature.ts` — `SidebarItem`, `NavAction`, `FeatureParam` 等
-
-## リファレンス実装
-
-実際の実装例として以下を参照:
-
-- `src/lib/template-replacer.ts` — サーバーサイドロジックの参考
-- `src/app/features/template-replacer/` — UI / Server Actions の参考
+- `src/lib/[feature-name].ts` を作成した
+- `src/app/features/[feature-name]/page.tsx` を作成した
+- `src/app/features/[feature-name]/actions.ts` を作成した
+- 必要なら `_components/` に UI を分割した
+- `src/components/sidebar-items.ts` を更新した
+- `docs/features/[feature-name].md` を追加した
+- `lucide-react` のアイコンを使った
+- `shadcn/ui` を優先して使った
+- `bunx tsc --noEmit` を通した
+- 必要なら `bun run build` を通した

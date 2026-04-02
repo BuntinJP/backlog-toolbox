@@ -3,6 +3,7 @@
 import { House, Wrench } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { APP_DESCRIPTION, APP_NAME, APP_VERSION } from "@/lib/app-meta";
 import { sidebarItems } from "./sidebar-items";
 import {
   Sidebar as AppSidebarShell,
@@ -28,10 +29,10 @@ export function Sidebar() {
           </div>
           <div className="grid flex-1 text-left group-data-[collapsible=icon]:hidden">
             <span className="text-sm font-semibold text-sidebar-foreground">
-              Backlog Toolbox
+              {APP_NAME}
             </span>
             <span className="text-xs text-sidebar-foreground/60">
-              個人ユーティリティ
+              {APP_DESCRIPTION}
             </span>
           </div>
         </div>
@@ -73,7 +74,7 @@ export function Sidebar() {
 
       <SidebarFooter className="px-3 py-3">
         <div className="rounded-lg border border-sidebar-border/70 bg-sidebar-accent/40 px-3 py-2 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
-          v0.1.0
+          v{APP_VERSION}
         </div>
       </SidebarFooter>
 

@@ -3,11 +3,12 @@ import { Sidebar } from "@/components/Sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { APP_DESCRIPTION, APP_NAME } from "@/lib/app-meta";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Backlog Toolbox",
-  description: "個人用ユーティリティWebアプリ",
+  title: APP_NAME,
+  description: APP_DESCRIPTION,
 };
 
 export default function RootLayout({
