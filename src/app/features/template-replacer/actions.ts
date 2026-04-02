@@ -15,6 +15,7 @@ export async function runTemplateReplacer(
     const templateEntry = formData.get("template");
     const variablesEntry = formData.get("variables");
     const modeEntry = formData.get("mode");
+    const inputFormatEntry = formData.get("inputFormat");
 
     if (typeof templateEntry !== "string" || typeof variablesEntry !== "string") {
       throw new Error("入力データが不正です");
@@ -22,11 +23,14 @@ export async function runTemplateReplacer(
 
     const variables: unknown = JSON.parse(variablesEntry);
     const mode = typeof modeEntry === "string" ? modeEntry : undefined;
+    const inputFormat =
+      typeof inputFormatEntry === "string" ? inputFormatEntry : undefined;
 
     const result = await executeTemplateReplacer({
       template: templateEntry,
       variables,
       mode,
+      inputFormat,
     });
 
     return result;

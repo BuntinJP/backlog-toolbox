@@ -20,11 +20,14 @@ const InputSchema = z.object({
   variables: z.array(VariableSchema).min(1, "少なくとも1つの変数が必要です"),
   /** 置換モード */
   mode: z.enum(["aligned", "cartesian"]).default("aligned"),
+  /** 入力形式 */
+  inputFormat: z.enum(["by-variable", "by-line"]).default("by-variable"),
 });
 
 export type TemplateReplacerInput = z.infer<typeof InputSchema>;
 export type Variable = z.infer<typeof VariableSchema>;
 export type TemplateReplacementMode = TemplateReplacerInput["mode"];
+export type TemplateInputFormat = TemplateReplacerInput["inputFormat"];
 
 /** 結果の型 */
 export type TemplateReplacerResult = {
@@ -82,7 +85,16 @@ export async function executeTemplateReplacer(
   rawInput: unknown
 ): Promise<TemplateReplacerResult> {
   const input = InputSchema.parse(rawInput);
-  const { template, variables, mode } = input;
+  const { template, variables, mode, inputFormat } = input;
+
+  if (mode === "cartesian" && inputFormat === "by-line") {
+    return {
+      success: false,
+      message: "1行で入力は行対応モードでのみ利用できます",
+      results: [],
+      totalCombinations: 0,
+    };
+  }
 
   // テンプレート内の変数を検証
   for (const v of variables) {
